@@ -1,0 +1,278 @@
+:root {
+  color: #1f2937;
+  background: #f3efe7;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  color: #fff;
+  background: #111827;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgb(17 24 39 / 18%);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+button.secondary {
+  color: #1f2937;
+  background: #e7ded0;
+}
+
+.shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 320px);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.hero h1 {
+  max-width: 780px;
+  margin: 0;
+  color: #111827;
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.075em;
+}
+
+.eyebrow,
+.label {
+  margin: 0 0 0.55rem;
+  color: #8a5a2b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lede {
+  max-width: 620px;
+  margin: 1.2rem 0 0;
+  color: #5f6673;
+  font-size: 1.15rem;
+}
+
+.status-card,
+.panel {
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 28px;
+  background: rgb(255 251 244 / 78%);
+  box-shadow: 0 24px 80px rgb(67 45 20 / 12%);
+  backdrop-filter: blur(12px);
+}
+
+.status-card {
+  padding: 22px;
+}
+
+.status-card strong {
+  display: block;
+  color: #111827;
+  font-size: 1.35rem;
+}
+
+.gif-link {
+  display: inline-flex;
+  margin-top: 0.85rem;
+  color: #8a5a2b;
+  font-weight: 700;
+}
+
+.hidden {
+  display: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 24px;
+}
+
+.panel {
+  padding: 24px;
+}
+
+.controls {
+  display: grid;
+  gap: 16px;
+  align-self: start;
+}
+
+.dropzone {
+  display: grid;
+  gap: 6px;
+  place-items: center;
+  min-height: 148px;
+  border: 2px dashed #d7c4a9;
+  border-radius: 22px;
+  padding: 22px;
+  text-align: center;
+  background: #fff8ed;
+  cursor: pointer;
+}
+
+.dropzone.dragging {
+  border-color: #8a5a2b;
+  background: #fff1d9;
+}
+
+.dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.drop-title {
+  color: #111827;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.drop-hint {
+  color: #697281;
+  font-size: 0.92rem;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #e3d6c3;
+  border-radius: 14px;
+  padding: 0.82rem 0.9rem;
+  color: #111827;
+  background: #fffdf8;
+  outline: 0;
+}
+
+input:focus,
+select:focus {
+  border-color: #8a5a2b;
+  box-shadow: 0 0 0 4px rgb(138 90 43 / 14%);
+}
+
+.two-up,
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.preview-panel {
+  min-width: 0;
+}
+
+.preview-header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.preview-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+}
+
+.preview-header a {
+  color: #8a5a2b;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.preview-frame {
+  display: grid;
+  place-items: center;
+  min-height: 520px;
+  border-radius: 22px;
+  background:
+    linear-gradient(45deg, #ede5d9 25%, transparent 25%),
+    linear-gradient(-45deg, #ede5d9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ede5d9 75%),
+    linear-gradient(-45deg, transparent 75%, #ede5d9 75%);
+  background-color: #f8f1e7;
+  background-position:
+    0 0,
+    0 12px,
+    12px -12px,
+    -12px 0;
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+
+.preview-frame img {
+  display: block;
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  box-shadow: 0 18px 45px rgb(17 24 39 / 18%);
+}
+
+@media (max-width: 880px) {
+  .hero,
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-frame {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 560px) {
+  .two-up,
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}

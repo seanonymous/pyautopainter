@@ -2,7 +2,47 @@
 
 import os, math, sys, imageio, palettable, numpy as np, math, random, glob, threading, io, time, colorsys
 import PIL.Image, PIL.ImageDraw, PIL.ImageOps
-from flask import Flask, escape, request, send_file, render_template
+from flask import Flask, escape, request, send_file, render_template, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
+
+INPUT_DIR = 'input'
+OUTPUT_DIR = 'output'
+BRUSHES_DIR = 'brushes'
+PALETTE_DIR = 'palette'
+WEBUI_DIST_DIR = os.path.join('static', 'webui')
+ALLOWED_IMAGE_EXTENSIONS = {'.gif', '.jpeg', '.jpg', '.png', '.webp'}
+
+
+def list_input_images():
+	return sorted([os.path.basename(x) for x in glob.glob(os.path.join(INPUT_DIR, '*.*'))])
+
+
+def list_palette_names(painter):
+	custom_palettes = [os.path.splitext(os.path.basename(x))[0] for x in glob.glob(os.path.join(PALETTE_DIR, '*.*'))]
+	return painter.default_palette_names + sorted(custom_palettes)
+
+
+def webui_dist_path():
+	return os.path.abspath(WEBUI_DIST_DIR)
+
+
+def unique_input_filename(filename):
+	filename = secure_filename(filename)
+	if not filename:
+		filename = 'image.png'
+	stem, extension = os.path.splitext(filename)
+	if extension.lower() not in ALLOWED_IMAGE_EXTENSIONS:
+		return None
+	candidate = filename
+	index = 1
+	while os.path.exists(os.path.join(INPUT_DIR, candidate)):
+		candidate = f'{stem}-{index}{extension}'
+		index += 1
+	return candidate
+
+
+def json_error(message, status_code):
+	return jsonify({'error': message}), status_code
 
 
 class Palette:
@@ -102,10 +142,16 @@ class AutoPainter:
 	brush_size_multiplier = 1.25
 	palette_strict = False
 	def __init__(self):
-		self.load_image('bobross_trees.jpg')
+		for directory in (INPUT_DIR, OUTPUT_DIR, BRUSHES_DIR, PALETTE_DIR):
+			os.makedirs(directory, exist_ok=True)
+		default_image = os.path.join(INPUT_DIR, 'bobross_trees.jpg')
+		if os.path.exists(default_image):
+			self.load_image('bobross_trees.jpg')
+		else:
+			self.reference_image = PIL.Image.new('RGB', (512,512), (255,255,255))
 		self.configuration = self.get_configuration('quick')
 		self.base_brushes = []
-		brush_filenames = glob.glob('brushes\*.png')
+		brush_filenames = glob.glob(os.path.join(BRUSHES_DIR, '*.png'))
 		for fn in brush_filenames:
 			brush = PIL.Image.open(fn).convert('RGBA')
 			self.base_brushes.append(brush)
@@ -113,7 +159,7 @@ class AutoPainter:
 		self.canvas.save(self.progress_image, format='JPEG')
 
 	def load_image(self, filename):
-		self.reference_image = PIL.Image.open('input\\'+filename).convert('RGBA')
+		self.reference_image = PIL.Image.open(os.path.join(INPUT_DIR, os.path.basename(filename))).convert('RGBA')
 		self.reference_image = self.reference_image.convert('RGB')
 	
 	def setup_palette(self, palette_name):
@@ -128,7 +174,7 @@ class AutoPainter:
 		elif palette_name == 'purple/gray':
 			return Palette(palettable.tableau.PurpleGray_12.colors)
 		else:
-			fn = os.path.join('palette', palette_name+'.png')
+			fn = os.path.join(PALETTE_DIR, palette_name+'.png')
 			if os.path.exists(fn):
 				palette = Palette()
 				palette.load_from_image(fn)
@@ -159,11 +205,11 @@ class AutoPainter:
 			if self.running:
 				self.do_iteration(iteration, self.configuration, self.palette)
 					
-		self.canvas.save('output\\out.png')
+		self.canvas.save(os.path.join(OUTPUT_DIR, 'out.png'))
 		if self.save_gif and len(self.gif_frames) > 1:
-			self.gif_frames[0].save('output\\out.gif', save_all=True, append_images=self.gif_frames[1:], optimize=False, duration=80, loop=0)
+			self.gif_frames[0].save(os.path.join(OUTPUT_DIR, 'out.gif'), save_all=True, append_images=self.gif_frames[1:], optimize=False, duration=80, loop=0)
 		if self.generate_heightmap:
-			self.height_canvas.save('output\\out_height.png')
+			self.height_canvas.save(os.path.join(OUTPUT_DIR, 'out_height.png'))
 		self.finished = True
 		if self.running:
 			self.message = 'Done'
@@ -395,7 +441,7 @@ class AutoPainter:
 			if self.save_incremental:
 				if color_index >= last_saved_index + len(all_colors) * 0.33:
 					last_saved_index = color_index
-					self.canvas.save('output\\out_'+str(self.total_saved_index)+'.png')
+					self.canvas.save(os.path.join(OUTPUT_DIR, 'out_'+str(self.total_saved_index)+'.png'))
 					self.total_saved_index += 1
 			'''
 			if time.time() > last_time + 1:
@@ -431,11 +477,48 @@ def start_painter():
 
 @app.route('/')
 def landing_page():
-	name = request.args.get("name", "World")
+	built_webui = os.path.join(webui_dist_path(), 'index.html')
+	if os.path.exists(built_webui):
+		return send_from_directory(webui_dist_path(), 'index.html')
 	config_names = painter.configuration_names
-	image_names = [os.path.basename(x) for x in glob.glob('input\*.*')]
-	palette_names = painter.default_palette_names + [os.path.splitext(os.path.basename(x))[0] for x in glob.glob('palette\*.*')]
+	image_names = list_input_images()
+	palette_names = list_palette_names(painter)
 	return render_template('main.html', config_names=config_names, palette_names=palette_names, image_names=image_names)
+
+@app.route('/api/options')
+def route_options():
+	return jsonify({
+		'configNames': painter.configuration_names,
+		'imageNames': list_input_images(),
+		'paletteNames': list_palette_names(painter),
+		'status': painter.message,
+	})
+
+@app.route('/api/images', methods=['POST'])
+def route_upload_image():
+	uploaded = request.files.get('image')
+	if not uploaded:
+		return json_error('Choose an image to upload.', 400)
+	filename = unique_input_filename(uploaded.filename)
+	if filename is None:
+		return json_error('Supported image types: gif, jpeg, jpg, png, webp.', 400)
+	data = uploaded.read()
+	if not data:
+		return json_error('The uploaded image was empty.', 400)
+	try:
+		PIL.Image.open(io.BytesIO(data)).verify()
+	except Exception:
+		return json_error('That file does not look like a valid image.', 400)
+	with open(os.path.join(INPUT_DIR, filename), 'wb') as output:
+		output.write(data)
+	return jsonify({
+		'filename': filename,
+		'imageNames': list_input_images(),
+	})
+
+@app.route('/api/images/<path:filename>')
+def route_input_image(filename):
+	return send_from_directory(os.path.abspath(INPUT_DIR), os.path.basename(filename))
 
 @app.route('/status')
 def route_status():
@@ -447,22 +530,26 @@ def route_stop():
 	stop_painter()
 	return ''
 
-@app.route('/start')
+@app.route('/start', methods=['GET', 'POST'])
 def route_start():
-	painter.load_image(request.values.get('image'))
-	painter.palette = painter.setup_palette(request.values.get('palette'))
-	painter.configuration = painter.get_configuration(request.values.get('configuration'))
-	painter.color_distance_threshold = int(request.values.get('color_distance_threshold'))
-	painter.palette_strict = request.values.get('palette_usage') == 'Exact'
+	values = request.get_json(silent=True) or request.values
+	image_name = values.get('image')
+	if not image_name:
+		return json_error('Choose an input image before starting.', 400)
+	painter.load_image(image_name)
+	painter.palette = painter.setup_palette(values.get('palette', '(None)'))
+	painter.configuration = painter.get_configuration(values.get('configuration', 'quick'))
+	painter.color_distance_threshold = int(values.get('color_distance_threshold', 20))
+	painter.palette_strict = values.get('palette_usage') == 'Exact'
 	painter.autocontrast_cutoff = None
-	if len(request.values.get('autocontrast','')) > 0:
+	if len(values.get('autocontrast','')) > 0:
 		try:
-			cutoff = int(request.values.get('autocontrast','0'))
+			cutoff = int(values.get('autocontrast','0'))
 			painter.autocontrast_cutoff = cutoff
 		except Exception as e:
 			print(e)
 	start_painter()
-	return ''
+	return jsonify({'status': painter.message})
 
 @app.route('/progress.jpg')
 def route_progress():
@@ -474,7 +561,7 @@ def route_progress():
 def route_progress_gif():
 	global painter
 	file = painter.progress_image.getvalue()
-	return send_file('output\\out.gif', attachment_filename='progress.gif', mimetype='image/gif')
+	return send_file(os.path.join(OUTPUT_DIR, 'out.gif'), attachment_filename='progress.gif', mimetype='image/gif')
 
 if __name__ == '__main__':
 	painter = AutoPainter()

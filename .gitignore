@@ -1,2 +1,5 @@
 output
 input
+.venv
+__pycache__
+webui/node_modules
